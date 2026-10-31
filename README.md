@@ -1,6 +1,6 @@
-# Subtraction Splash with Devin the Otter
+# Stella 100: Subtraction with Devin the Otter
 
-A timed 2nd-grade subtraction game. The student gets 100 problems (all numbers 0–19, no negative answers), ordered from easy to hard, and has 8 minutes 30 seconds to finish.
+A timed 2nd-grade subtraction game. The student gets 100 problems (all numbers 0–19, no negative answers), starting at medium and ending with the hardest (teen facts that cross ten, like 13 − 7), and has 8 minutes 30 seconds to finish.
 
 - Type the answer with the keyboard (or tap the on-screen number pad) and press **Enter**.
 - **Skip** sends a problem to the end; when it comes back it can be answered or left blank.

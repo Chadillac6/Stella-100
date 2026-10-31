@@ -72,11 +72,10 @@
     return out;
   }
 
-  // Easy to hard: small take-aways, then up to 10, then teens without regrouping, then teens that cross ten.
+  // Medium to hard: take-aways within 10, then teens without regrouping, then teens that cross ten.
   const LEVELS = [
-    { count: 20, pool: pairs((a, b) => a >= 1 && a <= 10 && b <= 3) },
-    { count: 20, pool: pairs((a, b) => a <= 10 && b >= 4) },
-    { count: 25, pool: pairs((a, b) => a >= 11 && (b <= a - 10 || b >= 10)) },
+    { count: 25, pool: pairs((a, b) => a >= 6 && a <= 10 && b >= 3 && b < a) },
+    { count: 40, pool: pairs((a, b) => a >= 11 && b > 0 && b < a && (b <= a - 10 || b >= 10)) },
     { count: 35, pool: pairs((a, b) => a >= 11 && b < 10 && b > a - 10) },
   ];
 
