@@ -5,6 +5,16 @@
   const TIME_LIMIT_SECONDS = 8 * 60 + 30;
   const MAX_NUMBER = 19;
   const MAX_ANSWER_DIGITS = 2;
+  const HISTORY_LIMIT = 200;
+  const KEYS = { game: "stella100.game", history: "stella100.history", name: "stella100.lastName" };
+
+  const store = {
+    get(key, fallback) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+    },
+    set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage full or blocked */ } },
+    remove(key) { try { localStorage.removeItem(key); } catch { /* ignore */ } },
+  };
 
   // ---------- Devin the Otter ----------
   function otterSVG(pose) {
@@ -130,7 +140,7 @@
 
   // ---------- Elements ----------
   const $ = (id) => document.getElementById(id);
-  const screens = { start: $("screen-start"), game: $("screen-game"), results: $("screen-results") };
+  const screens = { start: $("screen-start"), game: $("screen-game"), results: $("screen-results"), scores: $("screen-scores") };
   const el = {
     mute: $("mute"), form: $("start-form"), name: $("name"), nameError: $("name-error"),
     playerName: $("player-name"), timer: $("timer"), timerText: $("timer-text"),
@@ -141,6 +151,11 @@
     resultsTitle: $("results-title"), resultsMsg: $("results-msg"), resultsScore: $("results-score"),
     resultsDate: $("results-date"), stats: $("stats"), wrongList: $("wrong-list"), allGrid: $("all-grid"),
     print: $("print"), again: $("again"), newPlayer: $("new-player"),
+    resume: $("resume"), resumeName: $("resume-name"), resumeProgress: $("resume-progress"),
+    resumeGo: $("resume-go"), resumeNew: $("resume-new"),
+    startScores: $("start-scores"), resultsScores: $("results-scores"),
+    scoresFilter: $("scores-filter"), scoresSummary: $("scores-summary"), scoresChart: $("scores-chart"),
+    scoresList: $("scores-list"), scoresBack: $("scores-back"), scoresClear: $("scores-clear"),
   };
 
   const CHEERS = [
@@ -161,25 +176,74 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
+  // The clock only runs while the game is on screen.
   function elapsedSeconds() {
-    return (Date.now() - state.startedAt) / 1000;
+    const running = state.runningSince ? Date.now() - state.runningSince : 0;
+    return (state.elapsedMs + running) / 1000;
+  }
+
+  function pauseClock() {
+    if (!state || !state.playing || !state.runningSince) return;
+    state.elapsedMs += Date.now() - state.runningSince;
+    state.runningSince = null;
+    saveGame();
+  }
+
+  function resumeClock() {
+    if (!state || !state.playing || state.runningSince || document.hidden) return;
+    state.runningSince = Date.now();
+    tick();
+  }
+
+  // ---------- Saved game ----------
+  function saveGame() {
+    if (!state || !state.playing) return;
+    const { name, problems, queue, pos, startedAt, timeUp } = state;
+    store.set(KEYS.game, { name, problems, queue, pos, startedAt, timeUp, elapsedMs: elapsedSeconds() * 1000 });
+  }
+
+  function savedGame() {
+    const g = store.get(KEYS.game, null);
+    const ok = g && typeof g.name === "string" && Array.isArray(g.problems) && g.problems.length === TOTAL
+      && Array.isArray(g.queue) && Number.isInteger(g.pos) && g.pos >= 0 && g.pos < g.queue.length
+      && typeof g.elapsedMs === "number";
+    if (g && !ok) store.remove(KEYS.game);
+    return ok ? g : null;
+  }
+
+  function refreshStart() {
+    const g = savedGame();
+    el.resume.hidden = !g;
+    el.form.hidden = !!g;
+    if (g) {
+      const done = g.problems.filter((p) => p.response !== null || p.leftBlank).length;
+      el.resumeName.textContent = g.name;
+      el.resumeProgress.textContent = `${done} of ${TOTAL} done, ${g.timeUp ? "time is up" : `${formatTime(Math.ceil(TIME_LIMIT_SECONDS - g.elapsedMs / 1000))} left`}`;
+    } else if (!el.name.value) {
+      el.name.value = store.get(KEYS.name, "");
+    }
   }
 
   // ---------- Game flow ----------
   function startGame(name) {
-    state = {
-      name, problems: makeProblems(), queue: [], pos: 0, typed: "",
-      startedAt: Date.now(), finishedAt: null, timeUp: false, playing: true,
-    };
-    state.queue = state.problems.map((_, i) => i);
-    el.playerName.textContent = name;
+    const problems = makeProblems();
+    store.set(KEYS.name, name);
+    playGame({ name, problems, queue: problems.map((_, i) => i), pos: 0, startedAt: Date.now(), timeUp: false, elapsedMs: 0 });
+  }
+
+  function playGame(saved) {
+    state = { ...saved, typed: "", finishedAt: null, usedSeconds: 0, playing: true, runningSince: null };
+    el.playerName.textContent = state.name;
     el.cheer.textContent = "";
-    el.timer.classList.remove("low", "over");
+    el.timer.classList.remove("low");
+    el.timer.classList.toggle("over", state.timeUp);
     el.timesup.hidden = true;
     show("game");
     sound.start();
     renderProblem();
+    resumeClock();
     tick();
+    saveGame();
     clearInterval(timerHandle);
     timerHandle = setInterval(tick, 250);
   }
@@ -268,6 +332,7 @@
       finish();
     } else {
       renderProblem();
+      saveGame();
     }
   }
 
@@ -286,6 +351,7 @@
         el.timesup.hidden = false;
         el.keepGoing.focus();
         sound.timesUp();
+        saveGame();
       }
       el.timerText.textContent = `Time's up +${formatTime(-left)}`;
       el.timer.setAttribute("aria-label", "Time is up");
@@ -293,10 +359,14 @@
   }
 
   function finish() {
+    state.usedSeconds = elapsedSeconds();
     state.playing = false;
+    state.runningSince = null;
     state.finishedAt = Date.now();
     clearInterval(timerHandle);
     el.timesup.hidden = true;
+    store.remove(KEYS.game);
+    saveToHistory();
     renderResults();
     show("results");
     sound.finish();
@@ -315,7 +385,7 @@
     const rightLate = right.length - rightOnTime;
     const wrong = ps.filter((p) => status(p) !== "ok");
     const lateCount = ps.filter((p) => p.late).length;
-    const used = (state.finishedAt - state.startedAt) / 1000;
+    const used = state.usedSeconds;
 
     el.resultsTitle.textContent = right.length >= 90 ? `Amazing, ${state.name}!`
       : right.length >= 70 ? `Great work, ${state.name}!`
@@ -354,6 +424,107 @@
       return `<div class="cell ${s}" title="Problem ${p.n}"><span><span class="n">${p.n}.</span> ${p.a}−${p.b}=${shown}</span><span class="tag">${mark}${p.late ? "⏰" : ""}</span></div>`;
     }).join("");
   }
+
+  // ---------- My Scores ----------
+  let scoresFilter = null;
+  let scoresReturn = "start";
+
+  function saveToHistory() {
+    const ps = state.problems;
+    const right = ps.filter((p) => status(p) === "ok");
+    const history = store.get(KEYS.history, []);
+    history.push({
+      name: state.name,
+      date: state.finishedAt,
+      right: right.length,
+      rightOnTime: right.filter((p) => !p.late).length,
+      used: Math.round(state.usedSeconds),
+      missed: ps.filter((p) => status(p) !== "ok").map((p) => [p.a, p.b, p.response]),
+    });
+    store.set(KEYS.history, history.slice(-HISTORY_LIMIT));
+  }
+
+  const esc = (text) => String(text).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const shortDate = (t) => new Date(t).toLocaleDateString([], { month: "numeric", day: "numeric" });
+
+  function openScores(from) {
+    scoresReturn = from;
+    const last = state ? state.name : store.get(KEYS.name, "");
+    const names = new Set(store.get(KEYS.history, []).map((h) => h.name));
+    scoresFilter = names.size > 1 && names.has(last) ? last : null;
+    renderScores();
+    show("scores");
+  }
+
+  function renderScores() {
+    const all = store.get(KEYS.history, []);
+    const names = [...new Set(all.map((h) => h.name))];
+    if (scoresFilter && !names.includes(scoresFilter)) scoresFilter = null;
+    el.scoresFilter.hidden = names.length < 2;
+    el.scoresFilter.innerHTML = [null, ...names].map((n) =>
+      `<button type="button" class="chip" data-name="${n === null ? "" : esc(n)}" aria-pressed="${n === scoresFilter}">${n === null ? "Everyone" : esc(n)}</button>`,
+    ).join("");
+
+    const list = scoresFilter ? all.filter((h) => h.name === scoresFilter) : all;
+    el.scoresClear.hidden = !all.length;
+    if (!list.length) {
+      el.scoresSummary.innerHTML = "";
+      el.scoresChart.innerHTML = "";
+      el.scoresList.innerHTML = '<p class="all-right">No scores yet. Finish a game and your score will show up here! 🦦</p>';
+      return;
+    }
+
+    const best = Math.max(...list.map((h) => h.right));
+    const latest = list[list.length - 1];
+    el.scoresSummary.innerHTML = [
+      `🎮 <b>${list.length}</b> ${list.length === 1 ? "game" : "games"}`,
+      `🏆 Best: <b>${best}</b>`,
+      `⭐ Last time: <b>${latest.right}</b>`,
+    ].map((s) => `<span class="stat">${s}</span>`).join("");
+
+    el.scoresChart.innerHTML = list.slice(-12).map((h) => `
+      <div class="bar-col">
+        <span class="bar-num">${h.right}</span>
+        <span class="bar${h.right === best ? " best" : ""}" style="height:calc((100% - 30px) * ${Math.max(4, h.right) / 100})"></span>
+        <span class="bar-date">${shortDate(h.date)}</span>
+      </div>`).join("");
+
+    const showName = names.length > 1 && !scoresFilter;
+    el.scoresList.innerHTML = list.slice().reverse().map((h) => {
+      const when = new Date(h.date).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const missed = h.missed.length
+        ? h.missed.map(([a, b, r]) => `<span class="miss">${a} − ${b} = <b>${a - b}</b>${r === null ? " (blank)" : ` (typed ${r})`}</span>`).join("")
+        : '<span class="miss perfect">None missed! 🎉</span>';
+      return `<details class="score-row">
+        <summary>
+          <span class="sr-when">${when}${showName ? ` · <b>${esc(h.name)}</b>` : ""}</span>
+          <span class="sr-score"><b>${h.right}</b>/${TOTAL}</span>
+          <span class="sr-time">⏱️ ${formatTime(h.used)}</span>
+        </summary>
+        <div class="sr-missed"><span class="sr-label">To practice:</span>${missed}</div>
+      </details>`;
+    }).join("");
+  }
+
+  el.scoresFilter.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    scoresFilter = chip.dataset.name || null;
+    renderScores();
+  });
+  el.startScores.addEventListener("click", () => openScores("start"));
+  el.resultsScores.addEventListener("click", () => openScores("results"));
+  el.scoresBack.addEventListener("click", () => {
+    if (scoresReturn === "start") refreshStart();
+    show(scoresReturn);
+  });
+  el.scoresClear.addEventListener("click", () => {
+    const who = scoresFilter ? `${scoresFilter}'s scores` : "all scores";
+    if (!window.confirm(`Delete ${who} from this device?`)) return;
+    store.set(KEYS.history, scoresFilter ? store.get(KEYS.history, []).filter((h) => h.name !== scoresFilter) : []);
+    scoresFilter = null;
+    renderScores();
+  });
 
   // ---------- Input ----------
   function pressKey(key) {
@@ -424,8 +595,20 @@
   el.print.addEventListener("click", () => window.print());
   el.again.addEventListener("click", () => startGame(state.name));
   el.newPlayer.addEventListener("click", () => {
+    refreshStart();
     el.name.value = "";
     show("start");
+    el.name.focus();
+  });
+  el.resumeGo.addEventListener("click", () => {
+    const g = savedGame();
+    if (g) playGame(g);
+    else refreshStart();
+  });
+  el.resumeNew.addEventListener("click", () => {
+    if (!window.confirm("Start a new game? The game you were playing will be erased.")) return;
+    store.remove(KEYS.game);
+    refreshStart();
     el.name.focus();
   });
 
@@ -441,16 +624,27 @@
     el.mute.blur();
   });
 
-  window.addEventListener("beforeunload", (e) => {
-    if (state && state.playing) {
-      e.preventDefault();
-      e.returnValue = "";
-    }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) pauseClock();
+    else resumeClock();
   });
+  window.addEventListener("pagehide", pauseClock);
+  window.addEventListener("pageshow", resumeClock);
+
+  // Keep the iPad from treating the game like a web page (pinch zoom, long-press menus).
+  ["gesturestart", "gesturechange"].forEach((type) => document.addEventListener(type, (e) => e.preventDefault()));
+  document.addEventListener("contextmenu", (e) => {
+    if (!e.target.closest("input")) e.preventDefault();
+  });
+
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* offline support is optional */ });
+  }
 
   drawOtters();
   renderMute();
+  refreshStart();
 
   // Exposed for automated checks only.
-  window.__otterMath = { makeProblems, LEVELS, TIME_LIMIT_SECONDS, getState: () => state };
+  window.__otterMath = { makeProblems, LEVELS, TIME_LIMIT_SECONDS, KEYS, getState: () => state };
 })();

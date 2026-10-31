@@ -7,6 +7,10 @@ A timed 2nd-grade subtraction game. The student gets 100 problems (all numbers 0
 - When time runs out, the student can keep going; answers after that are marked late (⏰).
 - No right/wrong feedback during the test. The results page shows the score, every missed problem with the right answer, and all 100 problems. It can be printed.
 - Sound effects with a mute button.
+- Add it to an iPad or iPhone home screen (Safari > Share > Add to Home Screen) and it runs full screen like an app, with an otter icon and launch screen.
+- Works offline after the first visit (`sw.js`). Bump `VERSION` in `sw.js` on every release; iPads pick up changes on the next launch after that.
+- If the game is closed mid-test, it reopens where the student left off. The clock pauses whenever the game is not on screen.
+- **My Scores** keeps past results on that device (browser storage only, nothing is sent anywhere).
 
 Plain HTML, CSS and JavaScript with no build step and no tracking. Open `index.html` or serve the folder with any static host (GitHub Pages).
 
