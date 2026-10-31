@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Subtraction Splash with Devin the Otter</title>
+  <meta name="description" content="A timed 2nd-grade subtraction game: 100 problems in 8 minutes 30 seconds with Devin the Otter.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span>
+  </div>
+  <div class="water" aria-hidden="true">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0 50 C180 10 360 90 540 50 C720 10 900 90 1080 50 C1260 10 1350 70 1440 50 V120 H0 Z"/></svg>
+  </div>
+
+  <button id="mute" class="mute" type="button" aria-pressed="false" aria-label="Sound on. Press to mute." title="Sound on / off">
+    <span class="mute-on" aria-hidden="true">🔊</span><span class="mute-off" aria-hidden="true">🔇</span>
+  </button>
+
+  <!-- START -->
+  <main id="screen-start" class="screen active" aria-labelledby="start-title">
+    <div class="start-wrap">
+      <div class="otter-hero">
+        <div class="bubble">Hi! I'm <strong>Devin the Otter</strong>. Let's splash through some subtraction!</div>
+        <div class="otter big" data-pose="wave"></div>
+      </div>
+      <section class="card start-card">
+        <h1 id="start-title">Subtraction Splash</h1>
+        <ul class="rules">
+          <li><span class="rule-icon">🔢</span><span><b>100</b> subtraction problems</span></li>
+          <li><span class="rule-icon">⏱️</span><span><b>8 minutes 30 seconds</b> on the clock</span></li>
+          <li><span class="rule-icon">⌨️</span><span>Type your answer, then press <b>Enter</b></span></li>
+          <li><span class="rule-icon">🐚</span><span>Stuck? Press <b>Skip</b>. It comes back at the end.</span></li>
+        </ul>
+        <form id="start-form" autocomplete="off" novalidate>
+          <label for="name" class="name-label">What's your name?</label>
+          <input id="name" name="name" type="text" maxlength="20" placeholder="Type your name" autocomplete="off" autocapitalize="words" spellcheck="false">
+          <p id="name-error" class="name-error" role="alert"></p>
+          <button type="submit" class="btn btn-go">Let's go!</button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- GAME -->
+  <main id="screen-game" class="screen" aria-label="Subtraction problems">
+    <header class="game-bar">
+      <div class="player"><div class="otter tiny" data-pose="down"></div><span id="player-name"></span></div>
+      <div id="timer" class="timer" role="timer" aria-live="off"><span class="timer-icon" aria-hidden="true">⏱️</span><span id="timer-text">8:30</span></div>
+    </header>
+
+    <div class="progress" aria-hidden="true">
+      <div class="river"><div id="progress-fill" class="river-fill"></div><div id="progress-otter" class="otter swim" data-pose="down"></div></div>
+    </div>
+    <p id="progress-text" class="progress-text">Problem 1 of 100</p>
+
+    <section class="card problem-card">
+      <p id="comeback" class="comeback" hidden>🐚 You skipped this one before. Give it a try!</p>
+      <div class="problem" aria-live="polite">
+        <span id="prob-a">13</span><span class="op">−</span><span id="prob-b">7</span><span class="op">=</span>
+        <span id="answer" class="answer" aria-label="Your answer"><span id="answer-text"></span><span class="caret" aria-hidden="true"></span></span>
+      </div>
+      <div class="pad" role="group" aria-label="Number pad">
+        <button type="button" class="key" data-key="1">1</button>
+        <button type="button" class="key" data-key="2">2</button>
+        <button type="button" class="key" data-key="3">3</button>
+        <button type="button" class="key" data-key="4">4</button>
+        <button type="button" class="key" data-key="5">5</button>
+        <button type="button" class="key" data-key="6">6</button>
+        <button type="button" class="key" data-key="7">7</button>
+        <button type="button" class="key" data-key="8">8</button>
+        <button type="button" class="key" data-key="9">9</button>
+        <button type="button" class="key key-back" data-key="Backspace" aria-label="Erase">⌫</button>
+        <button type="button" class="key" data-key="0">0</button>
+        <button type="button" class="key key-enter" data-key="Enter" aria-label="Enter answer">Enter</button>
+      </div>
+      <div class="game-actions">
+        <button id="skip" type="button" class="btn btn-skip">Skip</button>
+        <span id="skipped-count" class="skipped-count"></span>
+      </div>
+    </section>
+    <p id="cheer" class="cheer" aria-live="polite"></p>
+  </main>
+
+  <!-- TIME'S UP -->
+  <div id="timesup" class="modal" role="dialog" aria-modal="true" aria-labelledby="timesup-title" hidden>
+    <div class="card modal-card">
+      <div class="otter mid" data-pose="wave"></div>
+      <h2 id="timesup-title">Time's up!</h2>
+      <p>You can keep going and finish. Problems you do now get a <span class="late-badge">⏰ late</span> mark.</p>
+      <div class="modal-actions">
+        <button id="keep-going" type="button" class="btn btn-go">Keep going</button>
+        <button id="stop-now" type="button" class="btn btn-ghost">I'm done, show my results</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <main id="screen-results" class="screen" aria-labelledby="results-title">
+    <section class="card results-card">
+      <div class="results-head">
+        <div class="otter big" data-pose="cheer"></div>
+        <div>
+          <h1 id="results-title">Great work!</h1>
+          <p id="results-msg" class="results-msg"></p>
+          <p id="results-score" class="score"></p>
+          <p id="results-date" class="results-date"></p>
+        </div>
+      </div>
+      <div id="stats" class="stats"></div>
+
+      <h2 class="section-title">Ones to practice</h2>
+      <div id="wrong-list" class="wrong-list"></div>
+
+      <h2 class="section-title">All 100 problems</h2>
+      <p class="legend"><span class="cell ok mini">✓ right</span> <span class="cell bad mini">✗ wrong</span> <span class="cell blank mini">— blank</span> <span class="late-badge">⏰ after time was up</span></p>
+      <div id="all-grid" class="all-grid"></div>
+
+      <div class="results-actions no-print">
+        <button id="print" type="button" class="btn btn-go">🖨️ Print</button>
+        <button id="again" type="button" class="btn btn-skip">Play again</button>
+        <button id="new-player" type="button" class="btn btn-ghost">New player</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
