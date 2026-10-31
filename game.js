@@ -111,6 +111,10 @@
     $("splash-otter").innerHTML = art.otter;
     $("splash-fx").innerHTML = art.fx;
 
+    const behind = [...document.body.children].filter((n) => n !== node && n.tagName !== "SCRIPT");
+    behind.forEach((n) => { n.inert = true; });
+    node.focus();
+
     let closed = false;
     const onKey = (e) => {
       e.preventDefault();
@@ -121,6 +125,8 @@
       if (closed) return;
       closed = true;
       document.removeEventListener("keydown", onKey, true);
+      behind.forEach((n) => { n.inert = false; });
+      node.blur();
       node.classList.add("splash-out");
       setTimeout(() => { node.hidden = true; }, 350);
     }
