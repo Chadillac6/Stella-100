@@ -243,6 +243,7 @@
     renderProblem();
     resumeClock();
     tick();
+    if (!el.timesup.hidden) el.keepGoing.focus();
     saveGame();
     clearInterval(timerHandle);
     timerHandle = setInterval(tick, 250);
