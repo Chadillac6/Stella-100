@@ -290,6 +290,46 @@ button { font-family: inherit; }
   .problem { margin-bottom: 10px; }
 }
 
+/* ---------- Opening splash ---------- */
+.splash {
+  position: fixed; inset: 0; z-index: 100; overflow: hidden; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(#78c9f5, #9fdcff 18%, #e6f7ff 75%);
+  transition: opacity 0.35s ease;
+}
+.splash.splash-out { opacity: 0; pointer-events: none; }
+.splash:focus { outline: none; }
+.splash-stage { position: relative; width: min(420px, 62vw, 42vh); aspect-ratio: 420 / 500; }
+.splash-otter { position: absolute; left: 14.3%; top: 18%; width: 71.4%; height: 69%; }
+.splash-otter svg, .splash-fx { width: 100%; height: 100%; overflow: visible; }
+.splash-fx { position: absolute; inset: 0; }
+.splash-fx text { font-family: inherit; font-weight: 700; font-size: 44px; fill: #fff; }
+.splash-title { margin: 1.5vh 0 0; font-size: clamp(56px, 14vw, 118px); line-height: 1; font-weight: 700; color: #1f86c2; letter-spacing: 1px; text-shadow: 0 5px 0 #fff; }
+.splash-sub { margin: 1.4vh 0 0; font-size: clamp(22px, 5vw, 40px); font-weight: 500; color: var(--ink, #23364a); }
+.splash-water { position: absolute; left: 0; bottom: 0; width: 100%; height: 13vh; }
+.splash-water path { fill: #3aa7e0; opacity: 0.55; }
+
+.splash[data-kind="balance"] .splash-stage { margin-top: 5vh; }
+.splash[data-kind="juggle"] .splash-otter { animation: bob 0.6s ease-in-out infinite; }
+.splash .toss { animation: toss 0.6s ease-in-out infinite alternate; }
+.splash .toss-2 { animation-delay: -0.2s; }
+.splash .toss-3 { animation-delay: -0.4s; }
+@keyframes toss { from { translate: 0 12px; } to { translate: 0 -30px; } }
+
+.splash[data-kind="splash"] .splash-otter { animation: dive 0.8s cubic-bezier(0.3, 1.5, 0.6, 1) both; }
+.splash .splash-pool { transform-box: fill-box; transform-origin: 50% 100%; animation: ripple 0.6s 0.45s ease-out both; }
+.splash .drop { fill: #3aa7e0; opacity: 0.8; animation: fling 0.7s 0.5s ease-out both; }
+.splash .drop-1 { animation-delay: 0.6s; }
+.splash .drop-2 { animation-delay: 0.7s; }
+@keyframes dive { from { translate: 0 -140%; rotate: -20deg; } to { translate: 0 0; rotate: 0deg; } }
+@keyframes ripple { from { scale: 0.3 0.2; } to { scale: 1 1; } }
+@keyframes fling { from { translate: 0 60px; opacity: 0; } to { translate: 0 0; opacity: 0.8; } }
+
+.splash .tower { transform-box: fill-box; transform-origin: 50% 100%; animation: wobble 0.9s ease-in-out infinite; }
+.splash[data-kind="balance"] .splash-otter { transform-origin: 50% 100%; animation: sway 0.9s ease-in-out infinite; }
+@keyframes wobble { 0%, 100% { rotate: -7deg; } 50% { rotate: 7deg; } }
+@keyframes sway { 0%, 100% { rotate: 2deg; } 50% { rotate: -2deg; } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -297,7 +337,7 @@ button { font-family: inherit; }
 /* ---------- Print ---------- */
 @media print {
   body { background: #fff; }
-  .sky, .water, .mute, .no-print, #screen-start, #screen-game, #screen-scores, .modal { display: none !important; }
+  .splash, .sky, .water, .mute, .no-print, #screen-start, #screen-game, #screen-scores, .modal { display: none !important; }
   #screen-results { display: block !important; padding: 0; min-height: 0; }
   .card { box-shadow: none; border: 0; outline: 0; }
   .otter { animation: none !important; }

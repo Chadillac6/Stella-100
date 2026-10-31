@@ -10,6 +10,7 @@ A timed 2nd-grade subtraction game. The student gets 100 problems (all numbers 0
 - Add it to an iPad or iPhone home screen (Safari > Share > Add to Home Screen) and it runs full screen like an app, with an otter icon and launch screen.
 - Works offline after the first visit (`sw.js`). Bump `VERSION` in `sw.js` on every release; iPads pick up changes on the next launch after that.
 - If the game is closed mid-test, it reopens where the student left off. The clock pauses whenever the game is not on screen.
+- Every time it opens, Devin does something silly for about 2 seconds (juggling, a cannonball splash, or balancing the 100), a different one each time. Tap or press any key to skip.
 - **My Scores** keeps past results on that device (browser storage only, nothing is sent anywhere).
 
 Plain HTML, CSS and JavaScript with no build step and no tracking. Open `index.html` or serve the folder with any static host (GitHub Pages).
