@@ -1,5 +1,6 @@
 // Bump VERSION on every release so iPads pick up the new files on their next launch.
-const VERSION = "stella100-v1";
+const CACHE_PREFIX = "stella100-";
+const VERSION = `${CACHE_PREFIX}v2`;
 const ASSETS = [
   "./",
   "index.html",
@@ -25,7 +26,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== VERSION).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

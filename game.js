@@ -198,8 +198,8 @@
   // ---------- Saved game ----------
   function saveGame() {
     if (!state || !state.playing) return;
-    const { name, problems, queue, pos, startedAt, timeUp } = state;
-    store.set(KEYS.game, { name, problems, queue, pos, startedAt, timeUp, elapsedMs: elapsedSeconds() * 1000 });
+    const { name, problems, queue, pos, startedAt, timeUp, keptGoing } = state;
+    store.set(KEYS.game, { name, problems, queue, pos, startedAt, timeUp, keptGoing, elapsedMs: elapsedSeconds() * 1000 });
   }
 
   function savedGame() {
@@ -237,7 +237,7 @@
     el.cheer.textContent = "";
     el.timer.classList.remove("low");
     el.timer.classList.toggle("over", state.timeUp);
-    el.timesup.hidden = true;
+    el.timesup.hidden = !(state.timeUp && !state.keptGoing);
     show("game");
     sound.start();
     renderProblem();
@@ -566,7 +566,11 @@
     el.skip.blur();
   });
 
-  el.keepGoing.addEventListener("click", () => { el.timesup.hidden = true; });
+  el.keepGoing.addEventListener("click", () => {
+    el.timesup.hidden = true;
+    state.keptGoing = true;
+    saveGame();
+  });
   el.stopNow.addEventListener("click", () => {
     state.queue.slice(state.pos).forEach((i) => {
       const p = state.problems[i];
