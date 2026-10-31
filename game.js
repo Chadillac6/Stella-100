@@ -6,7 +6,9 @@
   const MAX_NUMBER = 19;
   const MAX_ANSWER_DIGITS = 2;
   const HISTORY_LIMIT = 200;
-  const KEYS = { game: "stella100.game", history: "stella100.history", name: "stella100.lastName" };
+  const KEYS = { game: "stella100.game", history: "stella100.history", name: "stella100.lastName", splash: "stella100.splash" };
+  const SPLASH_MS = 2200;
+  const SPLASHES = ["juggle", "splash", "balance"];
 
   const store = {
     get(key, fallback) {
@@ -17,7 +19,7 @@
   };
 
   // ---------- Devin the Otter ----------
-  function otterSVG(pose) {
+  function otterSVG(pose, { star: withStar = pose === "cheer", wink = false, extra = "" } = {}) {
     const armL = {
       down: '<ellipse cx="68" cy="160" rx="12" ry="21" fill="#7A4A22" transform="rotate(28 68 160)"/>',
       wave: '<g class="arm-wave"><ellipse cx="46" cy="118" rx="12" ry="24" fill="#7A4A22" transform="rotate(35 46 118)"/><circle cx="34" cy="100" r="11" fill="#7A4A22"/></g>',
@@ -28,7 +30,7 @@
       wave: '<ellipse cx="132" cy="160" rx="12" ry="21" fill="#7A4A22" transform="rotate(-28 132 160)"/>',
       cheer: '<ellipse cx="156" cy="112" rx="12" ry="26" fill="#7A4A22" transform="rotate(-35 156 112)"/><circle cx="169" cy="92" r="11" fill="#7A4A22"/>',
     }[pose];
-    const star = pose === "cheer"
+    const star = withStar
       ? '<path d="M172 48 l7 14 15 2 -11 10 3 15 -14 -7 -14 7 3 -15 -11 -10 15 -2 z" fill="#FFC93C" stroke="#E0A400" stroke-width="2" stroke-linejoin="round"/>'
       : "";
     const mouth = pose === "down"
@@ -47,15 +49,84 @@
       <path d="M56 130 Q100 152 144 130 L146 143 Q100 166 54 143 Z" fill="#1FB5A8"/>
       <path d="M118 146 L130 178 L116 175 L110 150 Z" fill="#158A80"/>
       <circle cx="78" cy="78" r="8.5" fill="#2A1A0E"/><circle cx="81" cy="75" r="3" fill="#fff"/>
-      <circle cx="122" cy="78" r="8.5" fill="#2A1A0E"/><circle cx="125" cy="75" r="3" fill="#fff"/>
+      ${wink
+        ? '<path d="M112 80 Q122 70 132 80" stroke="#2A1A0E" stroke-width="5" fill="none" stroke-linecap="round"/>'
+        : '<circle cx="122" cy="78" r="8.5" fill="#2A1A0E"/><circle cx="125" cy="75" r="3" fill="#fff"/>'}
       <ellipse cx="65" cy="100" rx="9" ry="6" fill="#F29C9C" opacity=".75"/>
       <ellipse cx="135" cy="100" rx="9" ry="6" fill="#F29C9C" opacity=".75"/>
       <ellipse cx="100" cy="104" rx="22" ry="16" fill="#F7E6CB"/>
       <ellipse cx="100" cy="96" rx="10" ry="7" fill="#3A2314"/>
       ${mouth}
       <path d="M80 101 L58 97 M80 106 L58 109 M120 101 L142 97 M120 106 L142 109" stroke="#5C3818" stroke-width="2" stroke-linecap="round"/>
-      ${armL}${armR}${star}
+      ${armL}${armR}${star}${extra}
     </svg>`;
+  }
+
+  // ---------- Opening splash: a different silly otter each time the app opens ----------
+  const GOGGLES = '<path d="M46 76 Q30 70 40 62 M154 76 Q170 70 160 62" stroke="#1FB5A8" stroke-width="6" fill="none"/>'
+    + '<circle cx="78" cy="78" r="18" fill="#bfeaff" fill-opacity=".55" stroke="#1FB5A8" stroke-width="6"/>'
+    + '<circle cx="122" cy="78" r="18" fill="#bfeaff" fill-opacity=".55" stroke="#1FB5A8" stroke-width="6"/>'
+    + '<path d="M96 78 H104" stroke="#1FB5A8" stroke-width="6"/>'
+    + '<path d="M150 40 V20 Q150 8 162 8" stroke="#FF7A59" stroke-width="9" fill="none" stroke-linecap="round"/>';
+  const TONGUE = '<path d="M104 112 Q110 126 118 116" fill="#F29C9C" stroke="#3A2314" stroke-width="2.5"/>';
+
+  function splashArt(kind) {
+    const ball = (x, y, color, label, n) =>
+      `<g class="toss toss-${n}"><circle cx="${x}" cy="${y}" r="34" fill="${color}" stroke="#fff" stroke-width="5"/>`
+      + `<text x="${x}" y="${y + 15}" text-anchor="middle">${label}</text></g>`;
+    const block = (x, y, color, label, tilt) =>
+      `<g transform="rotate(${tilt} ${x + 35} ${y + 35})"><rect x="${x}" y="${y}" width="70" height="70" rx="12" fill="${color}" stroke="#fff" stroke-width="5"/>`
+      + `<text x="${x + 35}" y="${y + 52}" text-anchor="middle">${label}</text></g>`;
+    if (kind === "juggle") {
+      return {
+        otter: otterSVG("cheer", { star: false }),
+        fx: ball(96, 160, "#FF7A59", "13", 1) + ball(210, 70, "#FFC93C", "−", 2) + ball(324, 160, "#1FB5A8", "7", 3)
+          + '<path d="M112 118 Q140 80 172 72 M248 72 Q280 80 308 118" stroke="#fff" stroke-width="5" fill="none" stroke-dasharray="4 12" stroke-linecap="round"/>',
+      };
+    }
+    if (kind === "splash") {
+      const drops = [[40, 330, 14], [90, 280, 10], [370, 320, 14], [330, 270, 9], [20, 250, 7], [400, 240, 8]]
+        .map(([x, y, r], i) => `<circle class="drop drop-${i % 3}" cx="${x}" cy="${y}" r="${r}"/>`).join("");
+      return {
+        otter: otterSVG("wave", { extra: GOGGLES }),
+        fx: '<g class="splash-pool"><path d="M40 420 L20 360 L70 395 L80 330 L120 390 M300 390 L340 330 L350 395 L400 360 L380 420" fill="#3aa7e0" stroke="#3aa7e0" stroke-width="10" stroke-linejoin="round" opacity=".85"/>'
+          + '<ellipse cx="210" cy="430" rx="200" ry="48" fill="#3aa7e0" opacity=".9"/><ellipse cx="210" cy="416" rx="150" ry="18" fill="#fff" opacity=".35"/></g>' + drops,
+      };
+    }
+    return {
+      otter: otterSVG("wave", { wink: true, extra: TONGUE }),
+      fx: '<g class="tower">' + block(178, -60, "#FF7A59", "1", -8) + block(170, 4, "#FFC93C", "0", 6) + block(176, 68, "#1FB5A8", "0", -4) + "</g>"
+        + '<path d="M140 0 q-14 10 0 20 M282 -30 q14 10 0 20" stroke="#1f86c2" stroke-width="5" fill="none" stroke-linecap="round"/>',
+    };
+  }
+
+  function runSplash() {
+    const node = $("splash");
+    const last = store.get(KEYS.splash, -1);
+    const index = Number.isInteger(last) ? (last + 1) % SPLASHES.length : 0;
+    store.set(KEYS.splash, index);
+    const kind = SPLASHES[index];
+    const art = splashArt(kind);
+    node.dataset.kind = kind;
+    $("splash-otter").innerHTML = art.otter;
+    $("splash-fx").innerHTML = art.fx;
+
+    let closed = false;
+    const onKey = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    };
+    function close() {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener("keydown", onKey, true);
+      node.classList.add("splash-out");
+      setTimeout(() => { node.hidden = true; }, 350);
+    }
+    node.addEventListener("click", close);
+    document.addEventListener("keydown", onKey, true);
+    setTimeout(close, SPLASH_MS);
   }
 
   function drawOtters(root = document) {
@@ -646,10 +717,11 @@
     navigator.serviceWorker.register("sw.js").catch(() => { /* offline support is optional */ });
   }
 
+  runSplash();
   drawOtters();
   renderMute();
   refreshStart();
 
   // Exposed for automated checks only.
-  window.__otterMath = { makeProblems, LEVELS, TIME_LIMIT_SECONDS, KEYS, getState: () => state };
+  window.__otterMath = { makeProblems, LEVELS, TIME_LIMIT_SECONDS, KEYS, SPLASHES, splashArt, getState: () => state };
 })();
