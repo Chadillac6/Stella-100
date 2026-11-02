@@ -641,7 +641,7 @@
   });
 
   el.skip.addEventListener("click", () => {
-    if (state && state.playing && el.timesup.hidden) skip();
+    if (state && state.playing && el.timesup.hidden && el.restartAsk.hidden) skip();
     el.skip.blur();
   });
 
@@ -649,12 +649,14 @@
     if (!state || !state.playing) return;
     pauseClock();
     tick();
+    screens.game.inert = true;
     el.restartAsk.hidden = false;
     el.restartNo.focus();
   }
   function closeRestart(restart) {
     if (el.restartAsk.hidden) return;
     el.restartAsk.hidden = true;
+    screens.game.inert = false;
     if (restart) {
       store.remove(KEYS.game);
       startGame(state.name);
@@ -666,8 +668,8 @@
   el.restart.addEventListener("click", () => { el.restart.blur(); askRestart(); });
   el.restartNo.addEventListener("click", () => closeRestart(false));
   el.restartYes.addEventListener("click", () => closeRestart(true));
-  el.restartAsk.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { e.preventDefault(); closeRestart(false); }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !el.restartAsk.hidden) { e.preventDefault(); closeRestart(false); }
   });
 
   el.keepGoing.addEventListener("click", () => {
