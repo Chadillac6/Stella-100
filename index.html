@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Stella 100: Subtraction with Devin the Otter</title>
-  <meta name="description" content="A timed 2nd-grade subtraction game: 100 problems in 8 minutes 30 seconds with Devin the Otter.">
+  <meta name="description" content="A timed 2nd-grade subtraction game: 100 problems in 8 minutes 30 seconds, or 50 in 4 minutes 15 seconds, with Devin the Otter.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
@@ -81,8 +81,8 @@
       <section class="card start-card">
         <h1 id="start-title">Stella 100</h1>
         <ul class="rules">
-          <li><span class="rule-icon">🔢</span><span><b>100</b> subtraction problems</span></li>
-          <li><span class="rule-icon">⏱️</span><span><b>8 minutes 30 seconds</b> on the clock</span></li>
+          <li><span class="rule-icon">🔢</span><span><b id="rule-count">100</b> subtraction problems</span></li>
+          <li><span class="rule-icon">⏱️</span><span><b id="rule-time">8 minutes 30 seconds</b> on the clock</span></li>
           <li><span class="rule-icon">⌨️</span><span>Type your answer, then press <b>Enter</b></span></li>
           <li><span class="rule-icon">🐚</span><span>Stuck? Press <b>Skip</b>. It comes back at the end.</span></li>
         </ul>
@@ -92,6 +92,11 @@
           <button id="resume-new" type="button" class="btn btn-ghost">Start a new game</button>
         </div>
         <form id="start-form" autocomplete="off" novalidate>
+          <p class="name-label" id="mode-label">Pick your game</p>
+          <div id="modes" class="modes" role="group" aria-labelledby="mode-label">
+            <button type="button" class="mode" data-total="50" aria-pressed="false"><b>Stella 50</b><span>50 problems</span><span>⏱️ 4:15</span></button>
+            <button type="button" class="mode" data-total="100" aria-pressed="true"><b>Stella 100</b><span>100 problems</span><span>⏱️ 8:30</span></button>
+          </div>
           <label for="name" class="name-label">What's your name?</label>
           <input id="name" name="name" type="text" maxlength="20" placeholder="Type your name" autocomplete="off" autocapitalize="words" spellcheck="false">
           <p id="name-error" class="name-error" role="alert"></p>
@@ -163,7 +168,7 @@
     <div class="card modal-card">
       <div class="otter mid" data-pose="down"></div>
       <h2 id="restart-title">Start over?</h2>
-      <p>You'll get 100 new problems and the clock goes back to 8:30. This game won't be saved.</p>
+      <p id="restart-text">You'll get 100 new problems and the clock goes back to 8:30. This game won't be saved.</p>
       <div class="modal-actions">
         <button id="restart-no" type="button" class="btn btn-go">No, keep playing</button>
         <button id="restart-yes" type="button" class="btn btn-ghost">Yes, start over</button>
@@ -188,7 +193,7 @@
       <h2 class="section-title">Ones to practice</h2>
       <div id="wrong-list" class="wrong-list"></div>
 
-      <h2 class="section-title">All 100 problems</h2>
+      <h2 id="all-title" class="section-title">All 100 problems</h2>
       <p class="legend"><span class="cell ok mini">✓ right</span> <span class="cell bad mini">✗ wrong</span> <span class="cell blank mini">— blank</span> <span class="late-badge">⏰ after time was up</span></p>
       <div id="all-grid" class="all-grid"></div>
 
@@ -211,6 +216,7 @@
           <p class="results-date">Saved on this device</p>
         </div>
       </div>
+      <div id="scores-mode" class="chips" role="group" aria-label="Which game"></div>
       <div id="scores-filter" class="chips" role="group" aria-label="Show scores for"></div>
       <div id="scores-summary" class="stats"></div>
       <div id="scores-chart" class="chart" aria-hidden="true"></div>
