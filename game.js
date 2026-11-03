@@ -1,12 +1,16 @@
 (() => {
   "use strict";
 
-  const TOTAL = 100;
-  const TIME_LIMIT_SECONDS = 8 * 60 + 30;
+  // Problem counts per level (medium, teens, teens crossing ten) for each game.
+  const MODES = {
+    50: { total: 50, seconds: 4 * 60 + 15, counts: [12, 20, 18] },
+    100: { total: 100, seconds: 8 * 60 + 30, counts: [25, 40, 35] },
+  };
+  const DEFAULT_TOTAL = 100;
   const MAX_NUMBER = 19;
   const MAX_ANSWER_DIGITS = 2;
   const HISTORY_LIMIT = 200;
-  const KEYS = { game: "stella100.game", history: "stella100.history", name: "stella100.lastName", splash: "stella100.splash" };
+  const KEYS = { game: "stella100.game", history: "stella100.history", name: "stella100.lastName", splash: "stella100.splash", mode: "stella100.mode" };
   const SPLASH_MS = 2200;
   const SPLASHES = ["juggle", "splash", "balance"];
 
@@ -161,16 +165,16 @@
 
   // Medium to hard: take-aways within 10, then teens without regrouping, then teens that cross ten.
   const LEVELS = [
-    { count: 25, pool: pairs((a, b) => a >= 6 && a <= 10 && b >= 3 && b < a) },
-    { count: 40, pool: pairs((a, b) => a >= 11 && b > 0 && b < a && (b <= a - 10 || b >= 10)) },
-    { count: 35, pool: pairs((a, b) => a >= 11 && b < 10 && b > a - 10) },
+    { pool: pairs((a, b) => a >= 6 && a <= 10 && b >= 3 && b < a) },
+    { pool: pairs((a, b) => a >= 11 && b > 0 && b < a && (b <= a - 10 || b >= 10)) },
+    { pool: pairs((a, b) => a >= 11 && b < 10 && b > a - 10) },
   ];
 
-  function makeProblems() {
+  function makeProblems(total = DEFAULT_TOTAL) {
     const list = [];
-    for (const level of LEVELS) {
-      for (const p of shuffle(level.pool).slice(0, level.count)) list.push(p);
-    }
+    LEVELS.forEach((level, i) => {
+      for (const p of shuffle(level.pool).slice(0, MODES[total].counts[i])) list.push(p);
+    });
     return list.map((p, i) => ({
       n: i + 1, a: p.a, b: p.b, answer: p.a - p.b,
       response: null, late: false, skipped: false,
@@ -228,6 +232,8 @@
     restart: $("restart"), restartAsk: $("restart-ask"), restartYes: $("restart-yes"), restartNo: $("restart-no"),
     resultsTitle: $("results-title"), resultsMsg: $("results-msg"), resultsScore: $("results-score"),
     resultsDate: $("results-date"), stats: $("stats"), wrongList: $("wrong-list"), allGrid: $("all-grid"),
+    modes: $("modes"), ruleCount: $("rule-count"), ruleTime: $("rule-time"), startTitle: $("start-title"),
+    restartText: $("restart-text"), allTitle: $("all-title"), scoresMode: $("scores-mode"),
     print: $("print"), again: $("again"), newPlayer: $("new-player"),
     resume: $("resume"), resumeName: $("resume-name"), resumeProgress: $("resume-progress"),
     resumeGo: $("resume-go"), resumeNew: $("resume-new"),
@@ -243,6 +249,10 @@
 
   let state = null;
   let timerHandle = null;
+  let pickedTotal = MODES[store.get(KEYS.mode, DEFAULT_TOTAL)] ? store.get(KEYS.mode, DEFAULT_TOTAL) : DEFAULT_TOTAL;
+
+  const limit = () => MODES[state.total].seconds;
+  const longTime = (sec) => `${Math.floor(sec / 60)} minutes ${sec % 60} seconds`;
 
   function show(name) {
     Object.entries(screens).forEach(([key, node]) => node.classList.toggle("active", key === name));
@@ -276,37 +286,47 @@
   // ---------- Saved game ----------
   function saveGame() {
     if (!state || !state.playing) return;
-    const { name, problems, queue, pos, startedAt, timeUp, keptGoing } = state;
-    store.set(KEYS.game, { name, problems, queue, pos, startedAt, timeUp, keptGoing, elapsedMs: elapsedSeconds() * 1000 });
+    const { name, total, problems, queue, pos, startedAt, timeUp, keptGoing } = state;
+    store.set(KEYS.game, { name, total, problems, queue, pos, startedAt, timeUp, keptGoing, elapsedMs: elapsedSeconds() * 1000 });
   }
 
   function savedGame() {
     const g = store.get(KEYS.game, null);
-    const ok = g && typeof g.name === "string" && Array.isArray(g.problems) && g.problems.length === TOTAL
+    if (g && g.total === undefined) g.total = DEFAULT_TOTAL;
+    const ok = g && typeof g.name === "string" && MODES[g.total] && Array.isArray(g.problems) && g.problems.length === g.total
       && Array.isArray(g.queue) && Number.isInteger(g.pos) && g.pos >= 0 && g.pos < g.queue.length
       && typeof g.elapsedMs === "number";
     if (g && !ok) store.remove(KEYS.game);
     return ok ? g : null;
   }
 
+  function renderModeInfo(total) {
+    const m = MODES[total];
+    el.startTitle.textContent = `Stella ${total}`;
+    el.ruleCount.textContent = total;
+    el.ruleTime.textContent = longTime(m.seconds);
+    el.modes.querySelectorAll(".mode").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.total) === pickedTotal)));
+  }
+
   function refreshStart() {
     const g = savedGame();
     el.resume.hidden = !g;
     el.form.hidden = !!g;
+    renderModeInfo(g ? g.total : pickedTotal);
     if (g) {
       const done = g.problems.filter((p) => p.response !== null || p.leftBlank).length;
       el.resumeName.textContent = g.name;
-      el.resumeProgress.textContent = `${done} of ${TOTAL} done, ${g.timeUp ? "time is up" : `${formatTime(Math.ceil(TIME_LIMIT_SECONDS - g.elapsedMs / 1000))} left`}`;
+      el.resumeProgress.textContent = `${done} of ${g.total} done, ${g.timeUp ? "time is up" : `${formatTime(Math.ceil(MODES[g.total].seconds - g.elapsedMs / 1000))} left`}`;
     } else if (!el.name.value) {
       el.name.value = store.get(KEYS.name, "");
     }
   }
 
   // ---------- Game flow ----------
-  function startGame(name) {
-    const problems = makeProblems();
+  function startGame(name, total) {
+    const problems = makeProblems(total);
     store.set(KEYS.name, name);
-    playGame({ name, problems, queue: problems.map((_, i) => i), pos: 0, startedAt: Date.now(), timeUp: false, elapsedMs: 0 });
+    playGame({ name, total, problems, queue: problems.map((_, i) => i), pos: 0, startedAt: Date.now(), timeUp: false, elapsedMs: 0 });
   }
 
   function playGame(saved) {
@@ -346,10 +366,10 @@
     const waiting = state.queue.slice(state.pos + 1).filter((i) => state.problems[i].skipped).length;
     el.skippedCount.textContent = waiting ? `🐚 ${waiting} skipped, coming back later` : "";
     const done = doneCount();
-    const pct = (done / TOTAL) * 100;
+    const pct = (done / state.total) * 100;
     el.progressFill.style.width = `${pct}%`;
     el.progressOtter.style.left = `${pct}%`;
-    el.progressText.textContent = `${done} of ${TOTAL} done`;
+    el.progressText.textContent = `${done} of ${state.total} done`;
   }
 
   function renderTyped() {
@@ -404,7 +424,7 @@
   function advance() {
     state.pos += 1;
     const done = doneCount();
-    if (done > 0 && done % 10 === 0 && done < TOTAL) {
+    if (done > 0 && done % 10 === 0 && done < state.total) {
       el.cheer.textContent = CHEERS[(done / 10 - 1) % CHEERS.length];
     }
     if (state.pos >= state.queue.length) {
@@ -417,7 +437,7 @@
 
   function tick() {
     if (!state || !state.playing) return;
-    const left = TIME_LIMIT_SECONDS - elapsedSeconds();
+    const left = limit() - elapsedSeconds();
     if (left > 0) {
       el.timerText.textContent = formatTime(Math.ceil(left));
       el.timer.classList.toggle("low", left <= 60);
@@ -465,15 +485,18 @@
     const wrong = ps.filter((p) => status(p) !== "ok");
     const lateCount = ps.filter((p) => p.late).length;
     const used = state.usedSeconds;
+    const total = state.total;
+    const pct = (right.length / total) * 100;
 
-    el.resultsTitle.textContent = right.length >= 90 ? `Amazing, ${state.name}!`
-      : right.length >= 70 ? `Great work, ${state.name}!`
+    el.resultsTitle.textContent = pct >= 90 ? `Amazing, ${state.name}!`
+      : pct >= 70 ? `Great work, ${state.name}!`
       : `Nice try, ${state.name}!`;
-    el.resultsMsg.textContent = right.length === TOTAL ? "Devin the Otter is doing a happy dance. Every single one is right! 🎉"
-      : right.length >= 90 ? "Wow! You're a subtraction superstar. ⭐"
-      : right.length >= 70 ? "You worked hard. Practice the ones below to get even faster! 💪"
+    el.resultsMsg.textContent = right.length === total ? "Devin the Otter is doing a happy dance. Every single one is right! 🎉"
+      : pct >= 90 ? "Wow! You're a subtraction superstar. ⭐"
+      : pct >= 70 ? "You worked hard. Practice the ones below to get even faster! 💪"
       : "Every try makes your brain stronger. Let's practice the ones below together! 🌊";
-    el.resultsScore.innerHTML = `You got <b>${right.length}</b> out of ${TOTAL} right!`;
+    el.resultsScore.innerHTML = `You got <b>${right.length}</b> out of ${total} right!`;
+    el.allTitle.textContent = `All ${total} problems`;
     el.resultsDate.textContent = new Date(state.finishedAt).toLocaleString([], {
       weekday: "long", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
     });
@@ -482,7 +505,7 @@
       `✅ <b>${rightOnTime}</b> right in time`,
       lateCount ? `⏰ <b>${rightLate}</b> right after time was up` : null,
       `❌ <b>${wrong.length}</b> to practice`,
-      `⏱️ Time used: <b>${formatTime(used)}</b>${used > TIME_LIMIT_SECONDS ? ` (limit ${formatTime(TIME_LIMIT_SECONDS)})` : ""}`,
+      `⏱️ Time used: <b>${formatTime(used)}</b>${used > limit() ? ` (limit ${formatTime(limit())})` : ""}`,
     ].filter(Boolean);
     el.stats.innerHTML = stats.map((s) => `<span class="stat">${s}</span>`).join("");
 
@@ -506,7 +529,9 @@
 
   // ---------- My Scores ----------
   let scoresFilter = null;
+  let scoresMode = DEFAULT_TOTAL;
   let scoresReturn = "start";
+  const totalOf = (h) => h.total || DEFAULT_TOTAL;
 
   function saveToHistory() {
     const ps = state.problems;
@@ -514,6 +539,7 @@
     const history = store.get(KEYS.history, []);
     history.push({
       name: state.name,
+      total: state.total,
       date: state.finishedAt,
       right: right.length,
       rightOnTime: right.filter((p) => !p.late).length,
@@ -531,12 +557,20 @@
     const last = state ? state.name : store.get(KEYS.name, "");
     const names = new Set(store.get(KEYS.history, []).map((h) => h.name));
     scoresFilter = names.size > 1 && names.has(last) ? last : null;
+    scoresMode = state ? state.total : pickedTotal;
     renderScores();
     show("scores");
   }
 
   function renderScores() {
-    const all = store.get(KEYS.history, []);
+    const everything = store.get(KEYS.history, []);
+    const totals = Object.keys(MODES).map(Number).filter((t) => everything.some((h) => totalOf(h) === t));
+    if (totals.length && !totals.includes(scoresMode)) scoresMode = totals[totals.length - 1];
+    el.scoresMode.hidden = totals.length < 2;
+    el.scoresMode.innerHTML = totals.slice().reverse().map((t) =>
+      `<button type="button" class="chip" data-total="${t}" aria-pressed="${t === scoresMode}">Stella ${t}</button>`,
+    ).join("");
+    const all = totals.length < 2 ? everything : everything.filter((h) => totalOf(h) === scoresMode);
     const names = [...new Set(all.map((h) => h.name))];
     if (scoresFilter && !names.includes(scoresFilter)) scoresFilter = null;
     el.scoresFilter.hidden = names.length < 2;
@@ -545,7 +579,7 @@
     ).join("");
 
     const list = scoresFilter ? all.filter((h) => h.name === scoresFilter) : all;
-    el.scoresClear.hidden = !all.length;
+    el.scoresClear.hidden = !everything.length;
     if (!list.length) {
       el.scoresSummary.innerHTML = "";
       el.scoresChart.innerHTML = "";
@@ -564,7 +598,7 @@
     el.scoresChart.innerHTML = list.slice(-12).map((h) => `
       <div class="bar-col">
         <span class="bar-num">${h.right}</span>
-        <span class="bar${h.right === best ? " best" : ""}" style="height:calc((100% - 30px) * ${Math.max(4, h.right) / 100})"></span>
+        <span class="bar${h.right === best ? " best" : ""}" style="height:calc((100% - 30px) * ${Math.max(4, (h.right / totalOf(h)) * 100) / 100})"></span>
         <span class="bar-date">${shortDate(h.date)}</span>
       </div>`).join("");
 
@@ -577,7 +611,7 @@
       return `<details class="score-row">
         <summary>
           <span class="sr-when">${when}${showName ? ` · <b>${esc(h.name)}</b>` : ""}</span>
-          <span class="sr-score"><b>${h.right}</b>/${TOTAL}</span>
+          <span class="sr-score"><b>${h.right}</b>/${totalOf(h)}</span>
           <span class="sr-time">⏱️ ${formatTime(h.used)}</span>
         </summary>
         <div class="sr-missed"><span class="sr-label">To practice:</span>${missed}</div>
@@ -589,6 +623,12 @@
     const chip = e.target.closest(".chip");
     if (!chip) return;
     scoresFilter = chip.dataset.name || null;
+    renderScores();
+  });
+  el.scoresMode.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    scoresMode = Number(chip.dataset.total);
     renderScores();
   });
   el.startScores.addEventListener("click", () => openScores("start"));
@@ -650,6 +690,7 @@
     pauseClock();
     tick();
     screens.game.inert = true;
+    el.restartText.textContent = `You'll get ${state.total} new problems and the clock goes back to ${formatTime(limit())}. This game won't be saved.`;
     el.restartAsk.hidden = false;
     el.restartNo.focus();
   }
@@ -659,7 +700,7 @@
     screens.game.inert = false;
     if (restart) {
       store.remove(KEYS.game);
-      startGame(state.name);
+      startGame(state.name, state.total);
     } else {
       resumeClock();
       (el.timesup.hidden ? el.restart : el.keepGoing).blur();
@@ -698,12 +739,20 @@
     }
     el.nameError.textContent = "";
     el.name.blur();
-    startGame(name);
+    startGame(name, pickedTotal);
   });
   el.name.addEventListener("input", () => { el.nameError.textContent = ""; });
 
   el.print.addEventListener("click", () => window.print());
-  el.again.addEventListener("click", () => startGame(state.name));
+  el.again.addEventListener("click", () => startGame(state.name, state.total));
+  el.modes.addEventListener("click", (e) => {
+    const btn = e.target.closest(".mode");
+    if (!btn) return;
+    pickedTotal = Number(btn.dataset.total);
+    store.set(KEYS.mode, pickedTotal);
+    renderModeInfo(pickedTotal);
+    sound.tap();
+  });
   el.newPlayer.addEventListener("click", () => {
     refreshStart();
     el.name.value = "";
@@ -757,5 +806,5 @@
   refreshStart();
 
   // Exposed for automated checks only.
-  window.__otterMath = { makeProblems, LEVELS, TIME_LIMIT_SECONDS, KEYS, SPLASHES, splashArt, getState: () => state };
+  window.__otterMath = { makeProblems, LEVELS, MODES, KEYS, SPLASHES, splashArt, getState: () => state };
 })();
