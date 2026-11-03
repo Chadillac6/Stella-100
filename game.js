@@ -557,7 +557,7 @@
     const last = state ? state.name : store.get(KEYS.name, "");
     const names = new Set(store.get(KEYS.history, []).map((h) => h.name));
     scoresFilter = names.size > 1 && names.has(last) ? last : null;
-    scoresMode = state ? state.total : pickedTotal;
+    scoresMode = from === "results" ? state.total : pickedTotal;
     renderScores();
     show("scores");
   }
@@ -638,9 +638,12 @@
     show(scoresReturn);
   });
   el.scoresClear.addEventListener("click", () => {
-    const who = scoresFilter ? `${scoresFilter}'s scores` : "all scores";
+    const byMode = !el.scoresMode.hidden;
+    const game = byMode ? `Stella ${scoresMode} ` : "";
+    const who = scoresFilter ? `${scoresFilter}'s ${game}scores` : `all ${game}scores`;
     if (!window.confirm(`Delete ${who} from this device?`)) return;
-    store.set(KEYS.history, scoresFilter ? store.get(KEYS.history, []).filter((h) => h.name !== scoresFilter) : []);
+    const shown = (h) => (!byMode || totalOf(h) === scoresMode) && (!scoresFilter || h.name === scoresFilter);
+    store.set(KEYS.history, store.get(KEYS.history, []).filter((h) => !shown(h)));
     scoresFilter = null;
     renderScores();
   });
