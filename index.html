@@ -106,7 +106,10 @@
   <main id="screen-game" class="screen" aria-label="Subtraction problems">
     <header class="game-bar">
       <div class="player"><div class="otter tiny" data-pose="down"></div><span id="player-name"></span></div>
-      <div id="timer" class="timer" role="timer" aria-live="off"><span class="timer-icon" aria-hidden="true">⏱️</span><span id="timer-text">8:30</span></div>
+      <div class="bar-right">
+        <button id="restart" type="button" class="restart" aria-label="Start over with new problems"><span aria-hidden="true">↻</span> Restart</button>
+        <div id="timer" class="timer" role="timer" aria-live="off"><span class="timer-icon" aria-hidden="true">⏱️</span><span id="timer-text">8:30</span></div>
+      </div>
     </header>
 
     <div class="progress" aria-hidden="true">
@@ -151,6 +154,19 @@
       <div class="modal-actions">
         <button id="keep-going" type="button" class="btn btn-go">Keep going</button>
         <button id="stop-now" type="button" class="btn btn-ghost">I'm done, show my results</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESTART -->
+  <div id="restart-ask" class="modal" role="dialog" aria-modal="true" aria-labelledby="restart-title" hidden>
+    <div class="card modal-card">
+      <div class="otter mid" data-pose="down"></div>
+      <h2 id="restart-title">Start over?</h2>
+      <p>You'll get 100 new problems and the clock goes back to 8:30. This game won't be saved.</p>
+      <div class="modal-actions">
+        <button id="restart-no" type="button" class="btn btn-go">No, keep playing</button>
+        <button id="restart-yes" type="button" class="btn btn-ghost">Yes, start over</button>
       </div>
     </div>
   </div>

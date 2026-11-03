@@ -1,6 +1,6 @@
 // Bump VERSION on every release so iPads pick up the new files on their next launch.
 const CACHE_PREFIX = "stella100-";
-const VERSION = `${CACHE_PREFIX}v3`;
+const VERSION = `${CACHE_PREFIX}v4`;
 const ASSETS = [
   "./",
   "index.html",

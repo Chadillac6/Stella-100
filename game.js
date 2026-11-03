@@ -225,6 +225,7 @@
     a: $("prob-a"), b: $("prob-b"), answer: $("answer"), answerText: $("answer-text"),
     comeback: $("comeback"), skip: $("skip"), skippedCount: $("skipped-count"), cheer: $("cheer"),
     timesup: $("timesup"), keepGoing: $("keep-going"), stopNow: $("stop-now"),
+    restart: $("restart"), restartAsk: $("restart-ask"), restartYes: $("restart-yes"), restartNo: $("restart-no"),
     resultsTitle: $("results-title"), resultsMsg: $("results-msg"), resultsScore: $("results-score"),
     resultsDate: $("results-date"), stats: $("stats"), wrongList: $("wrong-list"), allGrid: $("all-grid"),
     print: $("print"), again: $("again"), newPlayer: $("new-player"),
@@ -267,7 +268,7 @@
   }
 
   function resumeClock() {
-    if (!state || !state.playing || state.runningSince || document.hidden) return;
+    if (!state || !state.playing || state.runningSince || document.hidden || !el.restartAsk.hidden) return;
     state.runningSince = Date.now();
     tick();
   }
@@ -606,7 +607,7 @@
 
   // ---------- Input ----------
   function pressKey(key) {
-    if (!state || !state.playing || !el.timesup.hidden) return false;
+    if (!state || !state.playing || !el.timesup.hidden || !el.restartAsk.hidden) return false;
     if (/^[0-9]$/.test(key)) typeDigit(key);
     else if (key === "Backspace" || key === "Delete") erase();
     else if (key === "Enter") submit();
@@ -640,8 +641,35 @@
   });
 
   el.skip.addEventListener("click", () => {
-    if (state && state.playing && el.timesup.hidden) skip();
+    if (state && state.playing && el.timesup.hidden && el.restartAsk.hidden) skip();
     el.skip.blur();
+  });
+
+  function askRestart() {
+    if (!state || !state.playing) return;
+    pauseClock();
+    tick();
+    screens.game.inert = true;
+    el.restartAsk.hidden = false;
+    el.restartNo.focus();
+  }
+  function closeRestart(restart) {
+    if (el.restartAsk.hidden) return;
+    el.restartAsk.hidden = true;
+    screens.game.inert = false;
+    if (restart) {
+      store.remove(KEYS.game);
+      startGame(state.name);
+    } else {
+      resumeClock();
+      (el.timesup.hidden ? el.restart : el.keepGoing).blur();
+    }
+  }
+  el.restart.addEventListener("click", () => { el.restart.blur(); askRestart(); });
+  el.restartNo.addEventListener("click", () => closeRestart(false));
+  el.restartYes.addEventListener("click", () => closeRestart(true));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !el.restartAsk.hidden) { e.preventDefault(); closeRestart(false); }
   });
 
   el.keepGoing.addEventListener("click", () => {
